@@ -1,0 +1,60 @@
+{
+  "name": "@huangminhua/nanokg",
+  "license": "ISC",
+  "author": "huangminhua",
+  "version": "0.1.1",
+  "type": "module",
+  "bin": { "nanokg": "./dist/index.js" },
+  "files": ["dist"],
+  "keywords": [
+    "Knowledge Graph",
+    "NanoKG"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.node.json && tsup && tsc -p tsconfig.web.json && vite build",
+    "dev": "vite",
+    "serve": "node dist/index.js serve",
+    "test": "vitest run",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@ladybugdb/core": "0.20.1",
+    "commander": "^12.0.0",
+    "express": "^4.19.0"
+  },
+  "devDependencies": {
+    "@sigma/edge-curve": "^3.1.0",
+    "@sigma/node-image": "^3.0.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/supertest": "^6.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "graphology": "^0.25.4",
+    "graphology-layout-forceatlas2": "^0.10.1",
+    "lucide-react": "^1.38.0",
+    "radix-ui": "^1.6.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.0.0",
+    "shadcn": "^4.19.1",
+    "sigma": "^3.0.0",
+    "sonner": "^1.7.0",
+    "supertest": "^7.0.0",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.0.0",
+    "tsup": "^8.0.0",
+    "tw-animate-css": "^1.4.0",
+    "typescript": "^5.5.0",
+    "vite": "^5.4.21",
+    "vitest": "^2.0.0"
+  }
+}
