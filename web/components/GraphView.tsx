@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import Graph from 'graphology';
 import Sigma from 'sigma';
-import forceAtlas2 from 'graphology-layout-forceatlas2';
+import { graphToByteArrays } from 'graphology-layout-forceatlas2/helpers';
+import type { Fa2SnapshotMessage } from '../fa2Worker';
 import { EdgeArrowProgram } from 'sigma/rendering';
 import { createNodeImageProgram } from '@sigma/node-image';
 import {
@@ -190,16 +191,15 @@ export default function GraphView({ nodes, edges, centerId, typeFilter, onNodeCl
     applyBBox();
     sigma.on('clickNode', ({ node }) => clickRef.current?.(node));
     // hover 边：显示类型标签 + 加粗；移开还原
+    //（属性变化 sigma 自动 scheduleRefresh，手动同步 refresh 反而阻塞——大图全量重绘贵）
     const edgeType = new Map(filtered.edges.map((e) => [e.id, e.type]));
     sigma.on('enterEdge', ({ edge }) => {
       graph.setEdgeAttribute(edge, 'label', edgeType.get(String(edge)) ?? '');
       graph.setEdgeAttribute(edge, 'size', 4);
-      sigma.refresh();
     });
     sigma.on('leaveEdge', ({ edge }) => {
       graph.setEdgeAttribute(edge, 'label', '');
       graph.setEdgeAttribute(edge, 'size', 2);
-      sigma.refresh();
     });
     // hover 节点：其直接关联的边（出+入）加粗 + 显示类型；移开还原
     //（sigma 在节点 hover 时不做边命中检测，两套事件不冲突）
@@ -208,7 +208,6 @@ export default function GraphView({ nodes, edges, centerId, typeFilter, onNodeCl
         graph.setEdgeAttribute(e, 'label', on ? (edgeType.get(String(e)) ?? '') : '');
         graph.setEdgeAttribute(e, 'size', on ? 4 : 2);
       }
-      sigma.refresh();
     };
     // hover 节点：临时补显名称（孤立节点默认无标签）+ 其直接关联的边（出+入）加粗
     // + 显示类型；移开还原默认标签（有边节点仍显示名称）（sigma 在节点 hover 时不做
@@ -223,46 +222,66 @@ export default function GraphView({ nodes, edges, centerId, typeFilter, onNodeCl
       graph.setNodeAttribute(node, 'label', labelOf(String(node)));
       highlightEdgesOf(node, false);
     });
-    // 中心节点呼吸动效：大小 14±3 脉动，逐帧 refresh（本地小图可接受）
+    // 中心节点呼吸动效：大小 14±3 脉动（setNodeAttribute 自动触发 scheduleRefresh）
     let raf = 0;
     if (centerId && graph.hasNode(centerId)) {
       const t0 = performance.now();
       const base = sizeOf(centerId);
       const tick = (t: number) => {
         graph.setNodeAttribute(centerId, 'size', base + 3 * Math.sin((t - t0) / 300));
-        sigma.refresh();
         raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
     }
-    // 渐进式 FA2 布局：分帧迭代替代一次性同步 assign——2000+ 节点同步 500 迭代实测
-    // 3s+ 主线程卡死；分帧后首帧即见初始圆环，布局逐帧演化（~30 帧），全程可交互。
+    // FA2 布局（Web Worker）：分帧主线程版在 4700+ 节点实测 10 迭代/帧 = 212ms/帧，
+    // 布局期页面近乎冻结（布局算法本身 O(迭代×N logN)，与帧率无关）。改为 worker 内
+    // 分块迭代（同一 iterate 实现，结果一致），每块回传坐标快照，主线程 rAF 覆盖式
+    // 消费——主线程仅做毫秒级写回，布局期间全程可交互。
     // adjustSizes 节点尺寸参与斥力减少叠压；scalingRatio 调大拉开间距（实测 linLog 模式
     // 会把单连通图压成死团并甩飞外围节点，弃用）；gravity 偏低调（大量孤立/弱连节点
     // 在高 gravity 下会被均匀摊成圆形噪声背景，压扁稠密簇的疏密对比）。
     // 大图迭代减为 300：FA2 前段收敛快，2000+ 节点下 300 与 500 视觉差异小。
     const totalIters = graph.order > 1000 ? 300 : 500;
-    const step = Math.max(2, Math.ceil(totalIters / 30));
-    let iter = 0;
-    let rafLayout = 0;
-    const layoutStep = () => {
-      forceAtlas2.assign(graph, {
-        iterations: Math.min(step, totalIters - iter),
-        settings: {
-          adjustSizes: true,
-          gravity: 0.4,
-          scalingRatio: 12,
-          barnesHutOptimize: graph.order > 200,
-        },
-      });
-      iter += step;
-      applyBBox();
-      sigma.refresh();
-      if (iter < totalIters) rafLayout = requestAnimationFrame(layoutStep);
+    const fa2Settings = {
+      adjustSizes: true,
+      gravity: 0.4,
+      scalingRatio: 12,
+      barnesHutOptimize: graph.order > 200,
     };
-    rafLayout = requestAnimationFrame(layoutStep);
+    const worker = new Worker(new URL('../fa2Worker.ts', import.meta.url), { type: 'module' });
+    let pendingXY: Float32Array | null = null; // 最新未消费快照（覆盖式，旧快照丢弃）
+    let layoutDone = false;
+    let rafLayout = 0;
+    const consumeSnapshot = () => {
+      if (!layoutDone || pendingXY) rafLayout = requestAnimationFrame(consumeSnapshot);
+      if (!pendingXY) return;
+      const xy = pendingXY;
+      pendingXY = null;
+      // 按 graphToByteArrays 时的节点行序写回；updateEachNodeAttributes 只派发一次
+      // 批量事件，sigma 监听后自动 scheduleRefresh（无需手动 refresh）
+      let k = 0;
+      graph.updateEachNodeAttributes((_node, attr) => {
+        attr.x = xy[k++];
+        attr.y = xy[k++];
+        return attr;
+      });
+      applyBBox();
+    };
+    worker.onmessage = (e: MessageEvent<Fa2SnapshotMessage>) => {
+      pendingXY = new Float32Array(e.data.xy);
+      if (e.data.done) layoutDone = true;
+    };
+    const { nodes: nodeMatrix, edges: edgeMatrix } = graphToByteArrays(graph, () => 1);
+    // chunk=3：大图 (~21ms/迭代) 快照间隔 ~63ms ≈ 16fps 布局动画；小图迭代极快，
+    // 多余快照在 rAF 消费端被覆盖丢弃，不阻塞。
+    worker.postMessage(
+      { nodes: nodeMatrix.buffer, edges: edgeMatrix.buffer, settings: fa2Settings, totalIters, chunk: 3 },
+      [nodeMatrix.buffer, edgeMatrix.buffer],
+    );
+    rafLayout = requestAnimationFrame(consumeSnapshot);
 
     return () => {
+      worker.terminate();
       if (rafLayout) cancelAnimationFrame(rafLayout);
       if (raf) cancelAnimationFrame(raf);
       sigma.kill();
