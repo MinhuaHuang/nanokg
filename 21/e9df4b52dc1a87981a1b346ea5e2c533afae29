@@ -1,0 +1,31 @@
+web/fa2-modules.d.ts
+  s_46fcdf040a16c7::t_2a181480e4affc 18-31
+  s_46fcdf040a16c7::t_85d36b790113ed 1-11,15
+  s_46fcdf040a16c7::t_710b5bdde6f3c0 12-14,16-17
+web/components/GraphView.tsx
+  s_46fcdf040a16c7::t_8c1aad13eee730 194
+  s_46fcdf040a16c7::t_15c5f62692cd8e 225
+  s_46fcdf040a16c7::t_ceb6623d351e08 4-5,273
+  s_46fcdf040a16c7::t_bff498541cabb0 236-239,245-253,255-266,270-272,274-281
+  s_46fcdf040a16c7::t_f295ad4d541d3c 284
+web/fa2Worker.ts
+  s_46fcdf040a16c7::t_c1aa3b4c1050d8 1-6,8-30,35-49
+  s_46fcdf040a16c7::t_c332947b26a411 31-34
+  s_46fcdf040a16c7::t_bb710da65dd7c1 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "21e9df4b52dc1a87981a1b346ea5e2c533afae29",
+  "prompts": {},
+  "sessions": {
+    "s_46fcdf040a16c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3af7d70d-4a79-4311-8501-4f7fdf726df2",
+        "model": "GLM-5.3"
+      },
+      "human_author": "minhuahuang <huangminhua.cn@gmail.com>"
+    }
+  }
+}
