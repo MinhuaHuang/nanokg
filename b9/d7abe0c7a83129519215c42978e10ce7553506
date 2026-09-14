@@ -1,0 +1,28 @@
+cli/index.ts
+  h_2045a5e48de959 14
+package.json
+  h_2045a5e48de959 5
+package-lock.json
+  s_8149845b66ce3a::t_3760947b64b9d6 3,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b9d7abe0c7a83129519215c42978e10ce7553506",
+  "prompts": {},
+  "humans": {
+    "h_2045a5e48de959": {
+      "author": "minhuahuang <huangminhua.cn@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_8149845b66ce3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67a5a9fe-8b2f-43f9-a580-3d1edebef077",
+        "model": "GLM-5.3"
+      },
+      "human_author": "minhuahuang <huangminhua.cn@gmail.com>"
+    }
+  }
+}
