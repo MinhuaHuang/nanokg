@@ -11,7 +11,7 @@ const program = new Command();
 program
   .name('nanokg')
   .description('NanoKG 轻量知识图谱管理工具')
-  .version('0.1.1')
+  .version('0.1.2')
   .option('--db <path>', 'LadybugDB 数据文件路径（默认 ~/.nanokg/data.lbug，或 NANOKG_DB 环境变量）');
 
 program

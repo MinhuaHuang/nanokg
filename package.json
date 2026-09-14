@@ -2,7 +2,7 @@
   "name": "@huangminhua/nanokg",
   "license": "ISC",
   "author": "huangminhua",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "bin": { "nanokg": "./dist/index.js" },
   "files": ["dist"],
